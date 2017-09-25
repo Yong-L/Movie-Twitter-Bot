@@ -21,4 +21,4 @@ class TweetStreamer(tweepy.StreamListener):
 if __name__ == '__main__':
     stream_listener = TweetStreamer()
     twitter_stream = tweepy.Stream(auth, stream_listener)
-    twitter_stream.filter(track=['yongsulee000'])
+    twitter_stream.filter(track=['bot_username'])
