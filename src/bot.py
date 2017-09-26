@@ -45,8 +45,16 @@ def find_schedule(zipcode, title_id):
     response = get(url)
     html_soup = BeautifulSoup(response.text, 'html.parser')
     
-    title_container = html_soup.find('div', {'class' : 'list detail'}).find_all('div')
-    print(title_container)
+    title_container = html_soup.find('div', {'class' : 'list detail'}).find('div').find_all('div', {'itemtype' : 'http://schema.org/Movie'})
+    
+    showtimes = None
+
+    for t in title_container:
+
+        if title_id in str(t.find('div', {'class' : 'image'}).find('a')):
+            print("This works")
+            showtimes = t.find('div', {'class' : 'showtimes'}).find_all('a')
+            print(showtimes[0])
 
 #Override streamer
 class TweetStreamer(tweepy.StreamListener):
