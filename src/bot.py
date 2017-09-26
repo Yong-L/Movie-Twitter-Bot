@@ -9,28 +9,21 @@ auth.set_access_token(access_key, access_secret)
 api = tweepy.API(auth)
 
 def find_id(title):
-    base_url = 'http://www.imdb.com/search/title?release_date=' + str(datetime.datetime.now().year) + "&title="
+    url = "http://www.imdb.com/find?ref_=nv_sr_fn&q="
 
     #add title to the search
     parts = title.split()
-    
-    url_title = ""
 
     for t in parts:
-        url_title += ("%20" + t)
+        url += (t + "+")
 
-    url = base_url + url_title
+    url += str(datetime.datetime.now().year)
 
     response = get(url)
     html_soup = BeautifulSoup(response.text, 'html.parser')
-
-    movie_container = html_soup.find_all('div', {"class" : "lister-item mode-advanced"})
-
-    #Assume that the top search is the best and most accurate
-    top_search = movie_container[0]
-    
-    title_id = str(top_search.find("h3", {"class" : "lister-item-header"}).find("a"))
-    return(title_id[(title_id.index("/title/") + len("/title/")) : title_id.index("/?")])
+    findSection = html_soup.find('table', {'class' : 'findList'}).find_all('tr')
+    tt_id = str(findSection[0].find('a'))
+    return(tt_id[tt_id.find("/title/") + len("/title/") : tt_id.rfind("/?")])
 
 def find_schedule(zipcode, title_id):
     base_url = "http://www.imdb.com/showtimes/title/" 
@@ -43,8 +36,17 @@ def find_schedule(zipcode, title_id):
 
     top_search = theater_container[0].find_all('div')
     theater = top_search[0].find('span', {'itemprop' : 'name'}).next
-    showtime = str(top_search[0].find('div', {'class' : 'showtimes'})).split()
-    print(showtime)
+
+    new_url = str(top_search[0].find('div' , {'class' : 'fav_box'}).find('a', {'itemprop' :
+        'url'})) 
+    url = "http://www.imdb.com" + new_url[new_url.find("href=") + len("href=") + 1 :
+            new_url.find("itemprop") - 1]
+
+    response = get(url)
+    html_soup = BeautifulSoup(response.text, 'html.parser')
+    
+    title_container = html_soup.find('div', {'class' : 'list detail'}).find_all('div')
+    print(title_container)
 
 #Override streamer
 class TweetStreamer(tweepy.StreamListener):
@@ -70,4 +72,4 @@ def StartStream():
 
 if __name__ == '__main__':
 
-    find_schedule(11364,find_id("American Made"))
+    find_schedule(11364, find_id("It"))
