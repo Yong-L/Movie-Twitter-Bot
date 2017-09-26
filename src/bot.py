@@ -18,12 +18,15 @@ def find_id(title):
         url += (t + "+")
 
     url += str(datetime.datetime.now().year)
-
     response = get(url)
     html_soup = BeautifulSoup(response.text, 'html.parser')
-    findSection = html_soup.find('table', {'class' : 'findList'}).find_all('tr')
-    tt_id = str(findSection[0].find('a'))
-    return(tt_id[tt_id.find("/title/") + len("/title/") : tt_id.rfind("/?")])
+    
+    try: 
+        findSection = html_soup.find('table', {'class' : 'findList'}).find_all('tr')
+        tt_id = str(findSection[0].find('a'))
+        return(tt_id[tt_id.find("/title/") + len("/title/") : tt_id.rfind("/?")])
+    except (TypeError, KeyError) as e:
+        return("Movie not found")
 
 def find_schedule(zipcode, title_id):
     base_url = "http://www.imdb.com/showtimes/title/" 
@@ -35,7 +38,7 @@ def find_schedule(zipcode, title_id):
     theater_container = html_soup.find_all('div' , {'class' : 'list detail'})
 
     top_search = theater_container[0].find_all('div')
-    theater = top_search[0].find('span', {'itemprop' : 'name'}).next
+    theater = str(top_search[0].find('span', {'itemprop' : 'name'}).next) 
 
     new_url = str(top_search[0].find('div' , {'class' : 'fav_box'}).find('a', {'itemprop' :
         'url'})) 
@@ -54,7 +57,21 @@ def find_schedule(zipcode, title_id):
         if title_id in str(t.find('div', {'class' : 'image'}).find('a')):
             print("This works")
             showtimes = t.find('div', {'class' : 'showtimes'}).find_all('a')
-            print(showtimes[0])
+            for s in showtimes:
+                if "Tickets" not in str(s.next):
+                    theater += " | " + str(s.next)
+
+    return theater
+
+def read_mention(mention):
+    title = mention[mention.find(' ') + 1 : mention.rfind(' ')]  
+    zipcode = mention.split()[-1] 
+
+    return title, zipcode
+
+def tweet_showtimes(showtimes, username, status_id):
+    
+    api.update_status(status='@{} {}'.format(username, showtimes))
 
 #Override streamer
 class TweetStreamer(tweepy.StreamListener):
@@ -65,13 +82,12 @@ class TweetStreamer(tweepy.StreamListener):
         username = status.user.screen_name
         status_id = status.id
 
-        msg = "@%s hey what's up" % (username)
-        api.update_status(msg)
+        title, zipcode = read_mention(status.text)
 
+        title_id = find_id(title)
+        showtimes = find_schedule(zipcode, title_id) 
 
-#movie_bot = TweetStreamer()
-#stream = tweepy.Stream(auth, movie_bot)
-#stream.filter(track=['bot_username'])
+        tweet_showtimes(showtimes, username, status_id)
 
 def StartStream():
     stream_listener = TweetStreamer()
@@ -79,5 +95,4 @@ def StartStream():
     twitter_stream.filter(track=[bot_username])
 
 if __name__ == '__main__':
-
-    find_schedule(11364, find_id("It"))
+    StartStream()
